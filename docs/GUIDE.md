@@ -239,6 +239,9 @@ function flip(count) {
 // js/app.js のグローバル領域に、1枚目のカードを保存する変数を定義します
 let firstid = -1;
 
+// ペア不成立の待機中（カードを裏に戻すまで）はクリックを無効にするためのロック
+let locked = false;
+
 // ペアかどうかをチェックする関数を作成します
 function checkPair(firstid, secondid) {
   return cards[firstid].num === cards[secondid].num;
@@ -247,6 +250,11 @@ function checkPair(firstid, secondid) {
 // Step 3で追加した addEventListener の中身を、以下のように全て書き換えます
 td.addEventListener('click', function() {
   let count = this.id;
+
+  // 裏に戻す待機中はクリックを受け付けない（3枚以上開くのを防ぐ）
+  if (locked) {
+    return;
+  }
 
   // 既にペアになっているカードや、同じカードをクリックした場合は何もしない
   if (cards[count].ispair || count == firstid) {
@@ -268,11 +276,13 @@ td.addEventListener('click', function() {
     } else {
       // ペアじゃなかった時の処理
       document.getElementById('message').innerHTML = 'ペアじゃない';
+      locked = true; // 裏に戻すまでクリックを無効化
       let wk_firstid = firstid;
       setTimeout(function() {
         flip(wk_firstid);
         flip(count);
         document.getElementById('message').innerHTML = '　';
+        locked = false; // クリックを再び有効化
       }, 1000); // 1秒後に裏に戻す
     }
     // 状態をリセット
@@ -280,6 +290,18 @@ td.addEventListener('click', function() {
   }
 });
 ```
+
+### 4. よくあるバグ：連続クリックで3枚以上めくれてしまう
+
+ペアが揃わなかったとき、`setTimeout` で「1秒後にカードを裏へ戻す」処理をしています。ところが、2枚目をめくった直後に `firstid = -1` でリセットされるため、**この1秒の待機中に次のカードをクリックすると「1枚目」として受け付けてしまい、3枚以上のカードが同時に開いてしまいます**。
+
+これを防ぐには、「裏に戻すまではクリックを受け付けない」という状態を作ります。上のコード例では `locked` という状態変数を使い、次のように制御しています。
+
+* ペア不成立で待機を始めるとき `locked = true` にする
+* クリック処理の先頭で `locked` が `true` なら `return` して何もしない
+* `setTimeout` の中（カードを裏に戻した後）で `locked = false` に戻す
+
+このように「処理中は操作を受け付けない」ロックの仕組みは、ゲームに限らず、二重送信の防止などさまざまな場面で使われる重要な考え方です。
 
 ---
 

@@ -60,6 +60,9 @@ function flip(count) {
 // 1枚目のカードを保存する変数
 let firstid = -1;
 
+// ペア不成立の待機中（カードを裏に戻すまで）はクリックを無効にするためのロック
+let locked = false;
+
 // ペアかどうかをチェックする関数
 function checkPair(firstid, secondid) {
   return cards[firstid].num === cards[secondid].num;
@@ -93,6 +96,11 @@ for (let i = 0; i < card_type.length; i++) {
     td.addEventListener('click', function() {
       let count = this.id;
 
+      // 裏に戻す待機中はクリックを受け付けない（3枚以上開くのを防ぐ）
+      if (locked) {
+        return;
+      }
+
       // 既にペアになっているカードや、同じカードをクリックした場合は何もしない
       if (cards[count].ispair || count == firstid) {
         return;
@@ -113,11 +121,13 @@ for (let i = 0; i < card_type.length; i++) {
         } else {
           // ペアじゃなかった時の処理
           document.getElementById('message').innerHTML = 'ペアじゃない';
+          locked = true; // 裏に戻すまでクリックを無効化
           let wk_firstid = firstid;
           setTimeout(function() {
             flip(wk_firstid);
             flip(count);
             document.getElementById('message').innerHTML = '　';
+            locked = false; // クリックを再び有効化
           }, 1000); // 1秒後に裏に戻す
         }
         // 状態をリセット
